@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="utf-8">
+    <title>US Earthquakes by Region 2011-2015</title>
+    <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+    <style type="text/css">
+      .axis {font: 17px sans-serif;}
+    </style>
+
+  </head>
+  <body>
+    <script type="text/javascript">
+
+//.......set graph dimensions and margins............................
+    var margin = {top: 30, right: 100, bottom: 30, left: 100},
+        width = 1500 - margin.left - margin.right,
+        height = 600 - margin.top - margin.bottom;
+
+//......append the svg object to the body of the page..............
+    var svg1 = d3.select("body")
+      .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform",
+              "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.csv("state-year-earthquakes.csv").then(function(data){
+//.............nest function returns an array of objects. Each object has a key property..............
+//.............data strcture example: [{"key":d.region.index1,"values":[data entries of d.region.index1]}]................
+//.............rollup function takes the array of values for each group/object and it produces a value based on that array.................
+//.............Multi-Level Nesting......................
+        var dataReady = d3.nest()
+          .key(function(d) {return d.region;})
+          .key(function(d) {return d.year;})
+          .rollup(function(d){
+            return{
+              statesFilter:d,
+              sum:d3.sum(d, function(d){return d.count})
+            }
+          })
+          .entries(data);
+// Dataready output:
+// [
+// {"key":"South",
+// "values":[{"key":"2011",
+// "value":{"statesFilter":[{"state":"Alabama","region":"South","year":"2011","count":"1"},{"state":"Arkansas","region":"South","year":"2011","count":"44"},...]
+// "sum":133}}, {"key":"2012","value":{}}, ...]
+// {"key":"west","values":[]}
+// ]
+
+    var regions = dataReady.map(function(d){return d.key}),
+//.............[0] means the first object in this array.......................................
+        years = dataReady[0].values.map(function(d){return d.key}).sort(),
+        min_year = d3.min(years),
+        max_year = d3.max(years),
+        max_sum = 0
+
+    for (var i = dataReady.length - 1; i >= 0; i--) {
+      for (var j = dataReady[i].values.length - 1; j >= 0; j--) {
+        if (dataReady[i].values[j].value.sum > max_sum) {max_sum = dataReady[i].values[j].value.sum }
+      }
+    }
+
+
+//.......................Add X axis.................................
+    var parseTime = d3.timeParse("%Y");
+    var x = d3.scaleTime()
+      .domain([parseTime(min_year), parseTime(max_year)])
+      .range([margin.left, width-margin.right]);
+    svg1.append("g")
+      .attr("transform", "translate(0," + (height-margin.bottom) + ")")
+      .call(d3.axisBottom(x))
+      .attr("font-size", "16px");
+
+//.......................Add Y axis..................................
+    var y = d3.scaleLinear()
+      .domain( [0, +max_sum])
+      .range([ height-margin.bottom, margin.top ]);
+    svg1.append("g")
+      .attr("transform","translate("+margin.left+",0)")
+      .call(d3.axisLeft(y))
+      .attr("font-size", "16px");
+
+    var color = d3.scaleOrdinal()
+      .domain(regions)
+      .range(d3.schemeSpectral[regions.length]);
+
+
+//....................Add the lines.....................................
+    var line = d3.line()
+      .x(function(d) { return x(parseTime(d.key)) })
+      .y(function(d) { return y(d.value.sum) })
+
+    svg1.selectAll("myLines")
+      .data(dataReady)
+      .enter()
+      .append("path")
+      .attr("d", function(d){ return line(d.values) } )
+      .attr("stroke", function(d){ return color(d.key)})
+      .style("stroke-width", 4)
+      .style("fill", "none")
+
+//.......................Add the points....................................
+    svg1.selectAll("myDots")
+      .data(dataReady)
+      .enter()
+      .append('g')
+      .style("fill", function(d){ return color(d.key) })
+      .selectAll("myPoints")
+      .data(function(d){ return d.values })
+      .enter()
+      .append("circle")
+      .attr("cx", function(d) { return x(parseTime(d.key)) })
+      .attr("cy", function(d) { return y(d.value.sum) } )
+      .attr("r", 5)
+      .attr("stroke", "white")
+      .on("mouseover", mouseover)
+      .on("mouseout", mouseout)
+
+//...................Add the legend......................
+    var size = 20
+    svg1.selectAll("labels")
+      .data(dataReady)
+      .enter()
+      .append("rect")
+      .attr("class","labels")
+      .attr("x", width - 30)
+      .attr("y", function(d,i){ return 100 + i*(size+5)})
+      .attr("width", size)
+      .attr("height", size)
+      .style("fill", function(d){ return color(d.key)})
+
+    svg1.selectAll("labels")
+        .data(dataReady)
+        .enter()
+        .append("text")
+        .attr("class","labels")
+        .attr("x", width + size*1.2 - 30)
+        .attr("y", function(d,i){ return 100 + i*(size+5) + size})
+        .attr("font-size","20px")
+        .text(function(d){ return d.key})
+        .attr("text-anchor", "left")
+        .style("alignment-baseline", "middle")
+
+
+//.....................Add the title...........................
+    svg1.append("text")
+        .attr("x", width/2)
+        .attr("y", 30)
+        .text("US Earthquakes by Region 2010-2015")
+        .style("text-anchor","middle")
+        .attr("font-size", "30px");
+
+    svg1.append("text")
+        .attr("x", width/2)
+        .attr("y", 60)
+        .text("zzheng309")
+        .style("text-anchor","middle")
+        .attr("font-size", "20px");
+
+
+    svg1.append("text")
+        .attr("x", -height/2-margin.top)
+        .attr("y", 0)
+        .text("Num of Earthquakes")
+        .style("text-anchor","middle")
+        .attr("font-size", "25px")
+        .attr("transform","rotate(270)");
+
+    function mouseover(d){
+      console.log(d3.select(this))
+      d3.select(this)
+        .attr('r','15');
+        selectedRegion = d3.select(this)._groups[0][0].__data__.value.statesFilter[0].region;
+        selectedYear = parseInt(d3.select(this)._groups[0][0].__data__.key);
+      var svg2 = d3.select("body")
+                  .append("svg")
+                  .attr("id","barchart")
+                  .attr("width", width + margin.left + margin.right)
+                  .attr("height", height + margin.top + margin.bottom)
+                  .append("g")
+                  .attr("transform",
+                        "translate(" + margin.left + "," + margin.top + ")");
+      d3.select(this).html(bar(svg2,selectedRegion,selectedYear))
+    }
+
+  function mouseout(d){
+      d3.select(this)
+        .attr('r','5');
+      d3.selectAll("#barchart").remove();
+    }
+})
+
+function bar(svg,selectedRegion,selectedYear){
+    d3.csv("state-year-earthquakes.csv").then(function(data){
+
+//........................Get the selected data.................................................
+    var selectedData=[];
+    data.map(function(d){
+      if(d.year == selectedYear && d.region == selectedRegion)
+      {selectedData.push({state: d.state, count: parseInt(d.count)});}
+    });
+    selectedData.sort(function(x,y){return d3.ascending(x.count, y.count)})
+    //console.log(selectedData)
+
+    var selectedStates = d3.map(selectedData, function(d){return d.state}).keys()
+    var padding = 5
+
+//.........................Add X axis............................................................
+    var x = d3.scaleLinear()
+      .domain([0, d3.max(selectedData, function(d){return d.count})])
+      .range([0, width-margin.right ]);
+    svg.append("g")
+       .attr("class", "x axis")
+       .attr("transform", "translate(100," + (height-margin.bottom) + ")")
+       .call(d3.axisBottom(x));
+
+//.........................Add Y axis....................................................
+    var y = d3.scaleBand()
+      .domain(selectedStates)
+      .range([ height-margin.bottom, margin.top ]);
+    svg.append("g")
+       .attr("class", "y axis")
+       .call(d3.axisLeft(y))
+       .attr("transform", "translate(100,0)")
+
+//..........................Create the bars..............................
+    svg.selectAll("rect")
+      .data(selectedData)
+      .enter()
+      .append("rect")
+      .attr("class", "rect")
+      .attr("x", 100)
+      .attr("y", function(d) { return y(d.state) + padding/2})
+      .attr("width", function(d){return x(d.count)})
+      .attr("height", y.bandwidth() - padding)
+      .style("stroke-width", 4)
+      .style("stroke", "none")
+      .attr("fill","steelblue")
+
+//..........................Add title to graph............................
+    svg.append("text")
+      .attr("x", width/2)
+      .attr("y", 10)
+      .attr("text-anchor", "middle")
+      .style("font-size", "30px")
+      .text(selectedRegion + " Region Earthquakes " + selectedYear);
+  })
+}
+
+    </script>
+
+</body>
+</html>
