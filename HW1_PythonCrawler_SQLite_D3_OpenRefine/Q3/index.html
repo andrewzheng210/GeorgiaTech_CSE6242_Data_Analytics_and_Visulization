@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Rebrickable Lego Sets by Year</title>
+        <script type="text/javascript" src="lib/d3/d3.min.js"></script>
+    </head>
+    <body>
+        <script type="text/javascript">
+            // Your beautiful D3 code will go here
+            var w = 1000;
+            var h = 500;
+            var padding = 3;
+            var margin = {
+                top: 50,
+                right: 20,
+                bottom: 50,
+                left: 50
+            };
+
+			//http://127.0.0.1:8080/
+			//python -m http.server 8080
+            var dataset = [];
+            var running_total = []
+            d3.dsv(",","q3.csv", function(data) {
+                dataset.push(data);
+                running_total.push(parseInt(data.running_total,10));          
+               
+            }).then(function(data){
+              var max_running_total = d3.max(running_total);
+              var max_year = dataset[dataset.length - 1].year;
+              var min_year = dataset[0].year;
+              
+              var xScale = d3.scaleTime()
+                              .domain([new Date("January 1, "+min_year), new Date("January 1, "+max_year)])
+                             .range([margin.left, w - margin.right]);
+              
+              var yScale = d3.scaleLinear()
+                             .domain([0, max_running_total])
+                             .range([h - margin.bottom, margin.top]);
+
+              var hScale = d3.scaleLinear()
+                             .domain([0, max_running_total])
+                             .range([0, h - margin.bottom - margin.top]);               
+              
+              var xAxis = d3.axisBottom(xScale)
+                            .ticks(d3.timeYear.every(3));
+                            
+              var yAxis = d3.axisLeft(yScale);
+
+              var svg = d3.select("body")
+                          .append("svg")
+                          .attr("width", w)
+                          .attr("height", h)
+
+              svg.selectAll("rect")
+                 .data(dataset)
+                 .enter()
+                 .append("rect")
+                 .attr("x", function(d) {
+                    return xScale(new Date(d.year));
+                 })
+                 .attr("y", function(d) {
+                    return yScale(d.running_total);
+                 })
+                 .attr("width", w / dataset.length - padding)
+                 .attr("height", function(d) {
+                    return hScale(d.running_total);
+                 })
+                 .attr("fill", "#1864aa");
+
+              svg.append("g")
+                 .attr("class", "axis")
+                 .attr("transform", "translate(1, " + (h-margin.bottom) + ")")
+                 .call(xAxis);
+
+              svg.append("g")
+                 .attr("class", "axis")
+                 .attr("transform", "translate(" + margin.left + ", 0)")
+                 .call(yAxis);
+
+              svg.append("text")
+                 .attr("x", w/2)
+                 .attr("y", 40)
+                 .style("text-anchor","middle")
+                 .attr("font-size", "24px")
+                 .text("Rebrickable Lego Sets by Year");
+
+              svg.append("text")
+                 .attr("x", w)
+                 .attr("y", 495)
+                 .style("text-anchor","end")
+                 .text("zzheng309");                  
+
+            });
+            
+        </script>
+    </body>
+</html>
