@@ -1,0 +1,1 @@
+When data is in a large range, it's better to use nonlinear scales to minimize the diversity, making data relationship and plot clearer.
