@@ -1,0 +1,6 @@
+What is the main reason to use a random forest versus a decision tree? (<= 50 words)
+Random forest is less prone to overfitting, giving a higher prediction accuracy compared to a decision tree. Besides, random forest is not influenced by outliers as much as a decision tree.
+How long did your random forest take to run? (in seconds)
+71 seconds.
+What accuracy (to two decimal places, xx.xx%) were you able to obtain?
+74.00%.
